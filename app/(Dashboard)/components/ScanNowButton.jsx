@@ -1,4 +1,7 @@
-export default function ScanNowButton() {
+"use client";
+import React from "react";
+
+export default function ScanNowButton({ onScanNowTap }) {
   return (
     // The main container is relative, centering the children.
     <div className="relative flex items-center justify-center size-62 mb-2">
@@ -7,9 +10,9 @@ export default function ScanNowButton() {
         className="
           absolute
           rounded-full
-          size-64                       /* Largest size */
+          size-64                       
           bg-green-200
-          animate-concentric-pulse      /* <-- ANIMATION APPLIED HERE */
+          animate-concentric-pulse      
           [animation-delay:-1s]         
         "
       ></div>
@@ -19,20 +22,21 @@ export default function ScanNowButton() {
         className="
           absolute
           rounded-full
-          size-52                       /* Medium size */
+          size-52                      
           bg-green-300
-          animate-concentric-pulse      /* <-- ANIMATION APPLIED HERE */
+          animate-concentric-pulse      
           [animation-delay:0s]          
         "
       ></div>
 
       {/* 3. Inner button (STATIC) - Must be positioned after the animated divs to sit on top */}
       <button
+        onClick={onStartTap}
         className="
-          relative                      /* Keep relative to sit on top of absolutes */
+          relative                      
           flex items-center justify-center
           rounded-full
-          size-38                    /* Smallest size (the actual button) */
+          size-38                    
           bg-green-400
           text-white
           text-lg
