@@ -27,25 +27,30 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
   const [countdown, setCountdown] = useState(30);
 
   // Function to interpolate color from green to red based on countdown
+
   const getColorForCountdown = useCallback(() => {
-    // ... (This logic remains the same, calculating RGB based on countdown)
     const maxTime = 30;
-    const percentage = countdown / maxTime;
+
+    const percentage = countdown / maxTime; // 1 (full green) -> 0 (full red)
+
+    // Color Interpolation (Green -> Red)
+    // As countdown decreases, R increases and G decreases.
     const r = Math.floor(255 * (1 - percentage));
     const g = Math.floor(255 * percentage);
     const b = 0;
+
     return `rgb(${r}, ${g}, ${b})`;
-  }, [countdown]);
+  }, [countdown]); // Recalculate only when countdown changes
 
   // --- PHASE 1: SCANNING (with 30s Countdown) ---
   const handleTimeout = useCallback(() => {
     setTapState(TAP_PHASE.CLOSED);
     onTimeout();
-  }, [setTapState, onTimeout]); // Added setTapState dependency for stability
+  }, [setTapState, onTimeout]);
 
   useEffect(() => {
     if (tapState !== TAP_PHASE.SCANNING) {
-      setCountdown(30); // Reset timer when phase changes
+      setCountdown(30);
       return;
     }
 
@@ -53,7 +58,7 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       setCountdown((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          handleTimeout(); // Use the stable useCallback function
+          handleTimeout();
           return 0;
         }
         return prev - 1;
@@ -61,15 +66,24 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [tapState, handleTimeout]); // Dependency on stable handleTimeout
+  }, [tapState, handleTimeout]);
 
-  // --- PHASE 3: REDIRECTION ---
+  // --- PHASE 2: REDIRECTION REGISTErED ---
+  // useEffect(() => {
+  //   if (tapState === TAP_PHASE.REGISTERED) {
+  //     const redirectTimer = setTimeout(() => {
+  //       router.push("/dashboard");
+  //     }, 3000);
+  //     return () => clearTimeout(redirectTimer);
+  //   }
+  // }, [tapState, router]);
+
+  // --- PHASE 3: REDIRECTION UNREGISTERED ---
   useEffect(() => {
-    // ... (Your redirection logic remains the same) ...
     if (tapState === TAP_PHASE.UNREGISTERED) {
       const redirectTimer = setTimeout(() => {
         router.push("/register");
-      }, 2000);
+      }, 3000);
       return () => clearTimeout(redirectTimer);
     }
   }, [tapState, router]);
@@ -80,24 +94,36 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
   let iconElement;
   let centerElement;
 
-  // Calculate dynamic color ONLY for the center timer/icon
-  const dynamicColor = getColorForCountdown();
-  const transitionStyle = { transition: "background-color 0.5s ease-out" };
+  const countdownColor = getColorForCountdown();
 
   // --- RENDER LOGIC ---
   switch (tapState) {
     case TAP_PHASE.SCANNING:
-      // Center element (Timer) - DYNAMIC COLOR
+      // Center element is the dynamic timer circle
       centerElement = (
         <div
-          className="size-12 flex items-center justify-center relative rounded-full z-50"
-          style={{ backgroundColor: dynamicColor, ...transitionStyle }} // <-- DYNAMIC COLOR
+          // Removed static bg-green-500 from the class
+          className="size-12 flex items-center justify-center relative rounded-full z-50 bg-white"
+          style={{
+            borderColor: countdownColor, // Dynamic border color
+            transition: "0.5s ease-out",
+          }}
         >
-          <span className="text-xl font-semibold text-white">{countdown}</span>
+          <span
+            className="text-xl font-semibold"
+            // DYNAMIC COLOR APPLIED TO THE TEXT
+            style={{ color: countdownColor, transition: "color 0.5s ease-out" }}
+          >
+            {countdown}
+          </span>
         </div>
       );
 
-      content = <span className="text-gray-500">Scanning RFID Card...</span>;
+      content = (
+        <span className="text-gray-500 animate-pulse">
+          Scanning RFID Card...
+        </span>
+      );
       iconElement = (
         <button
           onClick={onDetected}
@@ -107,49 +133,60 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
         </button>
       );
       break;
+
     case TAP_PHASE.READING:
       // Center element is the Searching Icon
+
       centerElement = (
-        <div className="bg-blue-500 size-12 flex items-center justify-center relative rounded-full z-50">
-          <Search className="text-white size-8 animate-pulse" />
+        <div className="bg-green-400 size-12 flex items-center justify-center relative rounded-full z-50">
+          <Search className="text-white size-8" />
         </div>
       );
-      content = <span className="text-gray-500">Reading RFID Card...</span>;
+
+      content = (
+        <span className="text-gray-500 animate-pulse">
+          Reading RFID Card...
+        </span>
+      );
+
       iconElement = null; // No simulate tap needed here
+
       break;
 
     case TAP_PHASE.REGISTERED:
       // Center element is the Success Icon
+
       centerElement = (
-        <div className="bg-green-500 size-12 flex items-center justify-center relative rounded-full z-50">
+        <div className="bg-green-400 size-12 flex items-center justify-center relative rounded-full z-50">
           <CheckCircle className="text-white size-8" />
         </div>
       );
+
       content = (
-        <span className="text-gray-500 font-semibold text-center">
-          Welcome back dear User!
+        <span className="text-gray-500 font-semibold text-base text-center">
+          Welcome back, (Name)!
         </span>
       );
+
       iconElement = null;
+
       break;
 
     case TAP_PHASE.UNREGISTERED:
       // Center element is the Error/Add User Icon
       centerElement = (
-        <div className="bg-red-500 size-12 flex items-center justify-center relative rounded-full z-50">
+        <div className="bg-green-400 size-12 flex items-center justify-center relative rounded-full z-50">
           <UserPlus className="text-white size-8" />
         </div>
       );
       content = (
-        <span className="text-gray-500 text-center">
-          RFID Card not found.
-          <br />
-          Redirecting to register page...
-        </span>
+        <div className="text-center text-gray-500 flex flex-col gap-1">
+          <span className="font-semibold text-base">RFID Card Unregistered</span>
+          <span className="text-sm ">Redirecting to register page</span>
+        </div>
       );
       iconElement = null;
       break;
-
     default:
       return null;
   }
@@ -157,30 +194,14 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
   // --- FINAL RENDER ---
   return (
     <div className="min-h-screen flex flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-50">
-      <div className="bg-white rounded-2xl py-8 px-4 flex flex-col items-center justify-center gap-4 w-full max-w-md shadow-2xl">
+      <div className="bg-white rounded-2xl py-8 px-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
         {/* Dynamic Center Element (Timer/Icon) */}
         <div className="relative flex items-center justify-center py-4">
-          {/* 1. Outermost Circle (ANIMATING) - Dynamic Color + Low Opacity */}
-          <div
-            className="absolute rounded-full size-24 animate-concentric-pulse [animation-delay:-1s]"
-            style={{
-              backgroundColor: dynamicColor,
-              opacity: 0.2, // Low opacity for outer ring
-              ...transitionStyle,
-            }}
-          ></div>
+          {/* Pulsing Circles (Fixed Colors) */}
+          <div className="absolute rounded-full size-24 bg-green-200 animate-concentric-pulse [animation-delay:-1s]"></div>
+          <div className="absolute rounded-full size-18 bg-green-300 animate-concentric-pulse [animation-delay:0s]"></div>
 
-          {/* 2. Middle Circle (ANIMATING) - Dynamic Color + Medium Opacity */}
-          <div
-            className="absolute rounded-full size-18 animate-concentric-pulse [animation-delay:0s]"
-            style={{
-              backgroundColor: dynamicColor,
-              opacity: 0.3, // Medium opacity for middle ring
-              ...transitionStyle,
-            }}
-          ></div>
-
-          {/* 3. Inner Center Element (Timer or Icon) */}
+          {/* Inner Center Element (Timer or Icon) */}
           {centerElement}
         </div>
 
@@ -229,6 +250,7 @@ export default function Home() {
       }
     }, 3000);
   };
+
   return (
     <div className="min-h-screen bg-gray-50 text-base">
       {/* Main */}
@@ -249,7 +271,7 @@ export default function Home() {
             {/* Intro */}
             <div className="flex text-center flex-col gap-1 pt-2">
               <span className="text-2xl font-bold">Welcome to EZ-Vendo</span>
-              <span className="text-gray-500">
+              <span className="text-gray-500 text-sm">
                 Secure and convenient vending experience.
               </span>
             </div>
@@ -273,7 +295,9 @@ export default function Home() {
                     size-64                       
                     bg-green-200
                     animate-concentric-pulse      
-                    [animation-delay:-1s]         
+                    [animation-delay:-1s]   
+                    transition-all
+                    ease-out
                   "
                 ></div>
 
@@ -285,7 +309,9 @@ export default function Home() {
                     size-52                      
                     bg-green-300
                     animate-concentric-pulse      
-                    [animation-delay:0s]          
+                    [animation-delay:0s] 
+                    transition-all
+                    ease-out         
                   "
                 ></div>
 
@@ -382,8 +408,8 @@ export default function Home() {
         {/* Contact admin */}
         <div className="flex flex-col items-center justify-center gap-1">
           <span className="text-gray-500 text-sm">Having trouble?</span>
-          <button className="flex items-center gap-1 text-green-500 font-semibold">
-            <Headset className="text-green-500 size-5" />
+          <button className="flex items-center gap-1 text-green-500 font-semibold text-sm">
+            <Headset className="text-green-500 size-4" />
             Contact Support
           </button>
         </div>
