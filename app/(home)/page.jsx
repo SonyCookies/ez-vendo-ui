@@ -19,6 +19,7 @@ const TAP_PHASE = {
   READING: "READING",
   REGISTERED: "REGISTERED",
   UNREGISTERED: "UNREGISTERED",
+  ATTEMPTS_USED: "ATTEMPTS_USED",
   CLOSED: "CLOSED",
 };
 
@@ -69,14 +70,14 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
   }, [tapState, handleTimeout]);
 
   // --- PHASE 2: REDIRECTION REGISTErED ---
-  // useEffect(() => {
-  //   if (tapState === TAP_PHASE.REGISTERED) {
-  //     const redirectTimer = setTimeout(() => {
-  //       router.push("/dashboard");
-  //     }, 3000);
-  //     return () => clearTimeout(redirectTimer);
-  //   }
-  // }, [tapState, router]);
+  useEffect(() => {
+    if (tapState === TAP_PHASE.REGISTERED) {
+      const redirectTimer = setTimeout(() => {
+        router.push("/dashboard");
+      }, 3000);
+      return () => clearTimeout(redirectTimer);
+    }
+  }, [tapState, router]);
 
   // --- PHASE 3: REDIRECTION UNREGISTERED ---
   useEffect(() => {
@@ -163,7 +164,7 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       );
 
       content = (
-        <span className="text-gray-500 font-semibold text-base text-center">
+        <span className="text-gray-500 font-semibold text-lg text-center">
           Welcome back, (Name)!
         </span>
       );
@@ -181,11 +182,38 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       );
       content = (
         <div className="text-center text-gray-500 flex flex-col gap-1">
-          <span className="font-semibold text-base">RFID Card Unregistered</span>
+          <span className="font-semibold text-lg">
+            RFID Card Unregistered
+          </span>
           <span className="text-sm ">Redirecting to register page</span>
         </div>
       );
       iconElement = null;
+      break;
+
+    case TAP_PHASE.ATTEMPTS_USED: // ⬅️ NEW PHASE IMPLEMENTATION
+      centerElement = (
+        <div className="bg-red-500 size-12 flex items-center justify-center relative rounded-full z-50">
+          <TicketX className="text-white size-8" />
+        </div>
+      );
+      content = (
+        <div className="text-center text-gray-500 flex flex-col gap-1">
+          <span className="font-semibold text-lg">Attempts Already Used</span>
+          <span className="text-sm">
+            You have used your attempts. Contact administrator for help.
+          </span>
+        </div>
+      );
+      iconElement = (
+        // Add a button to close the modal and maybe link to support
+        <button
+          onClick={() => setTapState(TAP_PHASE.CLOSED)}
+          className="mt-2 text-sm text-blue-500 underline"
+        >
+          Close
+        </button>
+      );
       break;
     default:
       return null;
@@ -215,42 +243,48 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
 
 export default function Home() {
   const [tapState, setTapState] = useState(TAP_PHASE.CLOSED);
-  const router = useRouter(); // Initialize router
+  const [failedAttempts, setFailedAttempts] = useState(0); // ⬅️ NEW STATE
+  const MAX_ATTEMPTS = 3; // ⬅️ NEW CONSTANT
+  const router = useRouter();
 
   const handleStartScan = () => {
+    // If attempts are exhausted, go straight to the lockout message
+    if (failedAttempts >= MAX_ATTEMPTS) {
+      setTapState(TAP_PHASE.ATTEMPTS_USED); // ⬅️ NEW PHASE
+      return;
+    }
     setTapState(TAP_PHASE.SCANNING);
   };
 
   const handleTimeout = useCallback(() => {
-    // Phase 1: Close modal on timeout
     setTapState(TAP_PHASE.CLOSED);
-  }, []); // Empty dependency array means this function reference never changes
+  }, []);
 
   const handleCardDetected = () => {
-    // Phase 2: Card tapped, switch to Reading phase
     setTapState(TAP_PHASE.READING);
 
-    // Simulate the data reading process (e.g., 3 seconds)
     setTimeout(() => {
-      // Logic to determine registered/unregistered status
-      const isRegistered = Math.random() > 0.5; // 50/50 chance for demo
+      const isRegistered = Math.random() > 0.5;
 
       if (isRegistered) {
-        // Phase 3a: Registered user
         setTapState(TAP_PHASE.REGISTERED);
-
-        // Close modal after 2 seconds
+        setFailedAttempts(0); // Reset attempts on successful registration/login
         setTimeout(() => setTapState(TAP_PHASE.CLOSED), 2000);
-
-        // In a real app, you'd redirect to the shop/dashboard here
-        // router.push("/shop");
       } else {
-        // Phase 3b: Unregistered user (Modal handles redirection via useEffect)
-        setTapState(TAP_PHASE.UNREGISTERED);
+        // User is UNREGISTERED
+        const newAttempts = failedAttempts + 1;
+        setFailedAttempts(newAttempts);
+
+        if (newAttempts >= MAX_ATTEMPTS) {
+          // Lockout phase
+          setTapState(TAP_PHASE.ATTEMPTS_USED); // ⬅️ Go to new phase
+        } else {
+          // Normal unregistered flow (redirect to register)
+          setTapState(TAP_PHASE.UNREGISTERED);
+        }
       }
     }, 3000);
   };
-
   return (
     <div className="min-h-screen bg-gray-50 text-base">
       {/* Main */}
