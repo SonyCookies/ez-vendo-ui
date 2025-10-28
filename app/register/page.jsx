@@ -29,6 +29,8 @@ export default function Register() {
     firstName: "",
     lastName: "",
     email: "",
+    password: "",
+    confirmPassword: "",
     rfid: "1234567890",
   });
   const [errors, setErrors] = useState({});
@@ -173,7 +175,7 @@ export default function Register() {
 
   const getInputClass = (name) => {
     const base =
-      "px-4 py-2 rounded-lg outline-none border transition-colors duration-150 placeholder:text-gray-500";
+      "px-3 py-2 rounded-md outline-none border transition-colors duration-150 placeholder:text-gray-500";
     if (name === "rfid") {
       return `${base} border-gray-300 bg-gray-100 text-gray-500`;
     }
@@ -184,15 +186,11 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen text-base flex flex-col items-center justify-between p-4 bg-white">
-      {/* top */}
-      <div className="flex items-center justify-center">Ez-Vendo</div>
-
-      {/* center */}
-      <div className="flex flex-col gap-6 w-full max-w-md">
+    <div className="min-h-dvh text-sm sm:text-base flex flex-col items-center justify-center p-3 sm:p-4 md:px-0 bg-white">
+      <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-md">
         {/* Intro */}
-        <div className="flex text-center flex-col gap-1">
-          <span className="text-2xl font-bold">
+        <div className="flex text-center flex-col">
+          <span className="text-xl sm:text-2xl font-bold">
             Welcome <span className="text-green-500">New User</span>
           </span>
           <span className="text-gray-500 text-sm">Create your account</span>
@@ -202,7 +200,7 @@ export default function Register() {
         <div className="flex flex-col items-center justify-center gap-1">
           <span className="text-gray-500 text-sm">Time left</span>
           <span
-            className="text-lg font-semibold"
+            className="text-base sm:text-lg font-semibold"
             // Apply dynamic color to the timer text
             style={{
               color: getColorForCountdown(),
@@ -216,54 +214,154 @@ export default function Register() {
         {/* Dynamic Global Validation Message */}
         {globalMessage.text /* ... JSX remains the same ... */ && (
           <div
-            className={`px-4 py-2 rounded-lg flex items-center gap-3 text-sm border-l-3 ${
+            className={`px-4 py-2 rounded-md flex items-center gap-2 sm:gap-3 text-sm border-l-3 ${
               globalMessage.type === "error"
                 ? "bg-red-100 text-red-500 border-red-500"
                 : "bg-green-100 text-green-500 border-green-500"
             }`}
           >
             {globalMessage.type === "error" ? (
-              <MessageCircleWarning className="size-8" />
+              <MessageCircleWarning className="size-6" />
             ) : (
-              <CheckCircleBig className="size-8" />
+              <CheckCircleBig className="size-7 sm:size-8" />
             )}
-            <span className="text-sm">{globalMessage.text}</span>
+            <span className="text-xs sm:text-sm">{globalMessage.text}</span>
           </div>
         )}
 
         {/* main form */}
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           {/* first and last fields */}
-          {/* ... (Your form fields remain here, using event handlers) ... */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1 flex flex-col gap-1">
-              <label htmlFor="firstName" className="text-sm text-gray-800">First Name</label>
-              <input id="firstName" name="firstName" type="text" value={formData.firstName} onChange={handleChange} onBlur={handleBlur} onFocus={handleFocus} className={getInputClass("firstName")} placeholder="e.g. Juan" disabled={isSubmitting || timeLeft <= 0} />
-              {errors.firstName && (<span className="text-xs text-red-400">{errors.firstName}</span>)}
+              <label htmlFor="firstName" className="text-xs sm:text-sm text-gray-800">
+                First Name
+              </label>
+              <input
+                id="firstName"
+                name="firstName"
+                type="text"
+                value={formData.firstName}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+                className={getInputClass("firstName")}
+                placeholder="e.g. Juan"
+                disabled={isSubmitting || timeLeft <= 0}
+              />
+              {errors.firstName && (
+                <span className="text-xs text-red-400">{errors.firstName}</span>
+              )}
             </div>
+
             <div className="col-span-1 flex flex-col gap-1">
-              <label htmlFor="lastName" className="text-sm text-gray-800">Last Name</label>
-              <input id="lastName" name="lastName" type="text" value={formData.lastName} onChange={handleChange} onBlur={handleBlur} onFocus={handleFocus} className={getInputClass("lastName")} placeholder="e.g. Dela Cruz" disabled={isSubmitting || timeLeft <= 0} />
-              {errors.lastName && (<span className="text-xs text-red-400">{errors.lastName}</span>)}
+              <label htmlFor="lastName" className="text-xs sm:text-sm text-gray-800">
+                Last Name
+              </label>
+              <input
+                id="lastName"
+                name="lastName"
+                type="text"
+                value={formData.lastName}
+                onChange={handleChange}
+                onBlur={handleBlur}
+                onFocus={handleFocus}
+                className={getInputClass("lastName")}
+                placeholder="e.g. Dela Cruz"
+                disabled={isSubmitting || timeLeft <= 0}
+              />
+              {errors.lastName && (
+                <span className="text-xs text-red-400">{errors.lastName}</span>
+              )}
             </div>
           </div>
+          {/* RFID */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="email" className="text-sm text-gray-800">Email</label>
-            <input id="email" name="email" type="email" value={formData.email} onChange={handleChange} onBlur={handleBlur} onFocus={handleFocus} className={getInputClass("email")} placeholder="e.g. name@example.com" disabled={isSubmitting || timeLeft <= 0} />
-            {errors.email && (<span className="text-xs text-red-400">{errors.email}</span>)}
+            <label htmlFor="rfid" className="text-xs sm:text-sm text-gray-800">
+              RFID Card No.
+            </label>
+            <input
+              id="rfid"
+              name="rfid"
+              type="text"
+              value={formData.rfid}
+              className={getInputClass("rfid")}
+              placeholder="Card number detected"
+              readOnly
+              disabled={isSubmitting || timeLeft <= 0}
+            />
           </div>
+          {/* Email */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="rfid" className="text-sm text-gray-800">RFID Card No.</label>
-            <input id="rfid" name="rfid" type="text" value={formData.rfid} className={getInputClass("rfid")} placeholder="Card number detected" readOnly disabled={isSubmitting || timeLeft <= 0} />
+            <label htmlFor="email" className="text-xs sm:text-sm text-gray-800">
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={formData.email}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={handleFocus}
+              className={getInputClass("email")}
+              placeholder="e.g. name@example.com"
+              disabled={isSubmitting || timeLeft <= 0}
+            />
+            {errors.email && (
+              <span className="text-xs text-red-400">{errors.email}</span>
+            )}
+          </div>
+          {/* password */}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="password" className="text-xs sm:text-sm text-gray-800">
+              Password
+            </label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={formData.password}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={handleFocus}
+              className={getInputClass("password")}
+              placeholder="Must be at least 8 characters long"
+              disabled={isSubmitting || timeLeft <= 0}
+            />
+            {errors.password && (
+              <span className="text-xs text-red-400">{errors.password}</span>
+            )}
+          </div>
+          {/* confirm password */}
+          <div className="flex flex-col gap-1">
+            <label htmlFor="confirmPassword" className="text-xs sm:text-sm text-gray-800">
+              Confirm password
+            </label>
+            <input
+              id="confirmPassword"
+              name="confirmPassword"
+              type="confirmPassword"
+              value={formData.confirmPassword}
+              onChange={handleChange}
+              onBlur={handleBlur}
+              onFocus={handleFocus}
+              className={getInputClass("confirmPassword")}
+              placeholder="Re-enter your password"
+              disabled={isSubmitting || timeLeft <= 0}
+            />
+            {errors.confirmPassword && (
+              <span className="text-xs text-red-400">{errors.confirmPassword}</span>
+            )}
           </div>
 
           {/* Register Button (Submission State) */}
-          <button 
+          <button
             type="submit"
-            className={`flex items-center justify-center gap-2 mt-2 px-4 py-2 rounded-lg text-white transition-colors duration-150 ${
+            className={`flex cursor-pointer items-center justify-center gap-2 my-2 px-4 py-2 rounded-full text-white transition-colors duration-150 ${
               isSubmitting || timeLeft <= 0 // Disable button if submitting or time is up
-                ? 'bg-green-700 cursor-not-allowed'
-                : 'bg-green-500 hover:bg-green-600'
+                ? "bg-green-700 cursor-not-allowed"
+                : "bg-green-500 hover:bg-green-500/90 active:bg-green-600"
             }`}
             disabled={isSubmitting || timeLeft <= 0}
           >
@@ -280,13 +378,13 @@ export default function Register() {
       </div>
 
       {/* bottom */}
-      <div className="flex flex-col items-center justify-center gap-1">
+      {/* <div className="flex flex-col items-center justify-center gap-1">
         <span className="text-gray-500 text-sm">Having trouble?</span>
         <button className="flex items-center gap-1 text-green-500 font-semibold text-sm">
           <Headset className="text-green-500 size-4" />
           Contact Support
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

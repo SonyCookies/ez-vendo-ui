@@ -104,14 +104,14 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       centerElement = (
         <div
           // Removed static bg-green-500 from the class
-          className="size-12 flex items-center justify-center relative rounded-full z-50 bg-white"
+          className="size-10 flex items-center justify-center relative rounded-full z-50 bg-white"
           style={{
             borderColor: countdownColor, // Dynamic border color
             transition: "0.5s ease-out",
           }}
         >
           <span
-            className="text-xl font-semibold"
+            className="text-lg sm:text-xl font-semibold"
             // DYNAMIC COLOR APPLIED TO THE TEXT
             style={{ color: countdownColor, transition: "color 0.5s ease-out" }}
           >
@@ -121,7 +121,7 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       );
 
       content = (
-        <span className="text-gray-500 animate-pulse">
+        <span className="text-gray-500 animate-pulse py-3 text-sm sm:text-base">
           Scanning RFID Card...
         </span>
       );
@@ -139,13 +139,13 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       // Center element is the Searching Icon
 
       centerElement = (
-        <div className="bg-green-400 size-12 flex items-center justify-center relative rounded-full z-50">
-          <Search className="text-white size-8" />
+        <div className="bg-green-400 size-10 sm:size-11 flex items-center justify-center relative rounded-full z-50">
+          <Search className="text-white size-6 sm:size-7" />
         </div>
       );
 
       content = (
-        <span className="text-gray-500 animate-pulse">
+        <span className="text-gray-500 animate-pulse py-3 text-sm sm:text-base">
           Reading RFID Card...
         </span>
       );
@@ -158,14 +158,14 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
       // Center element is the Success Icon
 
       centerElement = (
-        <div className="bg-green-400 size-12 flex items-center justify-center relative rounded-full z-50">
-          <CheckCircle className="text-white size-8" />
+        <div className="bg-green-400 size-10 sm:size-11 flex items-center justify-center relative rounded-full z-50">
+          <CheckCircle className="text-white size-6 sm:size-7" />
         </div>
       );
 
       content = (
-        <span className="text-gray-500 font-semibold text-lg text-center">
-          Welcome back, (Name)!
+        <span className="text-gray-500 py-3 text-base sm:text-lg">
+          Welcome back, <span className="font-semibold">Full name</span> !
         </span>
       );
 
@@ -176,16 +176,18 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
     case TAP_PHASE.UNREGISTERED:
       // Center element is the Error/Add User Icon
       centerElement = (
-        <div className="bg-green-400 size-12 flex items-center justify-center relative rounded-full z-50">
-          <UserPlus className="text-white size-8" />
+        <div className="bg-green-400 size-10 sm:size-11 flex items-center justify-center relative rounded-full z-50">
+          <UserPlus className="text-white size-6 sm:size-7" />
         </div>
       );
       content = (
-        <div className="text-center text-gray-500 flex flex-col gap-1">
-          <span className="font-semibold text-lg">
-            RFID Card Unregistered
+        <div className="text-center text-gray-500 flex flex-col py-3">
+          <span className="font-semibold text-base sm:text-lg">
+            Unregistered User Detected
           </span>
-          <span className="text-sm ">Redirecting to register page</span>
+          <span className="text-xs sm:text-sm ">
+            Redirecting to register page
+          </span>
         </div>
       );
       iconElement = null;
@@ -193,14 +195,16 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
 
     case TAP_PHASE.ATTEMPTS_USED: // ⬅️ NEW PHASE IMPLEMENTATION
       centerElement = (
-        <div className="bg-red-500 size-12 flex items-center justify-center relative rounded-full z-50">
-          <TicketX className="text-white size-8" />
+        <div className="bg-red-500 size-10 sm:size-11 flex items-center justify-center relative rounded-full z-50">
+          <TicketX className="text-white size-6 sm:size-7" />
         </div>
       );
       content = (
-        <div className="text-center text-gray-500 flex flex-col gap-1">
-          <span className="font-semibold text-lg">Attempts Already Used</span>
-          <span className="text-sm">
+        <div className="text-center text-gray-500 flex flex-col py-3">
+          <span className="font-semibold text-base sm:text-lg">
+            Attempts Already Used
+          </span>
+          <span className="text-xs sm:text-sm">
             You have used your attempts. Contact administrator for help.
           </span>
         </div>
@@ -221,13 +225,13 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
 
   // --- FINAL RENDER ---
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-50">
-      <div className="bg-white rounded-2xl py-8 px-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
+    <div className="min-h-dvh flex flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
+      <div className="bg-white rounded-2xl p-4 flex flex-col items-center justify-center gap- w-full max-w-md">
         {/* Dynamic Center Element (Timer/Icon) */}
-        <div className="relative flex items-center justify-center py-4">
+        <div className="relative flex items-center justify-center py-6">
           {/* Pulsing Circles (Fixed Colors) */}
-          <div className="absolute rounded-full size-24 bg-green-200 animate-concentric-pulse [animation-delay:-1s]"></div>
-          <div className="absolute rounded-full size-18 bg-green-300 animate-concentric-pulse [animation-delay:0s]"></div>
+          <div className="absolute rounded-full size-22 bg-green-200 animate-concentric-pulse [animation-delay:-1s]"></div>
+          <div className="absolute rounded-full size-16 bg-green-300 animate-concentric-pulse [animation-delay:0s]"></div>
 
           {/* Inner Center Element (Timer or Icon) */}
           {centerElement}
@@ -286,11 +290,11 @@ export default function Home() {
     }, 3000);
   };
   return (
-    <div className="min-h-screen bg-gray-50 text-base">
+    <div className="min-h-dvh container mx-auto w-full max-w-md text-xs sm:text-base">
       {/* Main */}
-      <div className="flex flex-col gap-8 p-4">
+      <div className="flex flex-col gap-6 p-3 sm:p-4 md:px-0">
         {/* Header */}
-        <div className="hidden items-center justify-between w-full ">
+        <div className="hidden items-center justify-between w-full">
           {/* Left */}
           logo here
           {/* Right */}
@@ -298,29 +302,32 @@ export default function Home() {
             toggle?
           </div>
         </div>
+
         {/* Center */}
-        <div className="flex flex-col gap-4 w-full ">
+        <div className="flex flex-col gap-3 sm:gap-4 w-full">
           {/* main */}
-          <div className="flex flex-col gap-6 w-full">
+          <div className="flex flex-col gap-4 w-full">
             {/* Intro */}
-            <div className="flex text-center flex-col gap-1 pt-2">
-              <span className="text-2xl font-bold">Welcome to EZ-Vendo</span>
-              <span className="text-gray-500 text-sm">
+            <div className="flex text-center flex-col py-1">
+              <span className="text-xl sm:text-2xl font-bold">
+                Welcome to EZ-Vendo
+              </span>
+              <span className="text-gray-500 text-xs sm:text-sm">
                 Secure and convenient vending experience.
               </span>
             </div>
             {/* Main */}
-            <div className="bg-white p-4 rounded-2xl shadow flex flex-col gap-4 items-center">
-              <div className="flex flex-col gap-1 pt-4 pb-2 text-center">
-                <span className="text-2xl font-bold  ">
-                  Tap Your <span className="text-green-500">RFID Card</span>
+            <div className="bg-white p-4 rounded-2xl border border-gray-300/80 flex flex-col gap-3 items-center">
+              <div className="flex flex-col gap-1 text-center pt-2">
+                <span className="text-xl sm:text-2xl font-bold  ">
+                  Ready to <span className="text-green-500">Scan</span>
                 </span>
-                <span className="text-gray-500 text-sm">
+                <span className="text-gray-500 text-xs sm:text-sm">
                   Tap your RFID Card to Start or Register
                 </span>
               </div>
               {/* insert the scan now button with animation here */}
-              <div className="relative flex items-center justify-center size-62 mb-2">
+              <div className="relative flex items-center justify-center size-62 my-3">
                 {/* 1. Outermost Circle (ANIMATING) */}
                 <div
                   className="
@@ -373,36 +380,62 @@ export default function Home() {
                 </button>
               </div>
               {/* note for unregistered user */}
-              <div className="flex items-center gap-3 px-4 py-3 rounded-lg bg-gray-100">
+              <div className="flex items-center gap-3 p-3 sm:p-4 rounded-lg bg-gray-100">
                 <div className="flex items-center">
                   <div className="bg-green-500 rounded-full">
                     <Info className="text-white" />
                   </div>
                 </div>
                 <div className="flex">
-                  <span className="text-gray-500 text-sm">
-                    <span className="font-bold">Note: </span> For unregistered
-                    user, only 3 attempts blah blah blah
+                  <span className="text-gray-500 text-xs sm:text-sm">
+                    <span className="font-bold">Note: </span> Unregisterd user
+                    can only attempt 3 times before being locked out
                   </span>
                 </div>
               </div>
             </div>
           </div>
 
+          {/* statuses */}
+          <div className="grid grid-cols-2 gap-3">
+            {/* online users */}
+            <div className="col-span-1 rounded-2xl border border-gray-300/80 p-4 bg-white flex items-center gap-3">
+              <div className="flex flex-col flex-1 sm:gap-1">
+                <span className="text-gray-500 text-xs sm:text-sm">
+                  Online users
+                </span>
+                <span className=" text-sm sm:text-base font-semibold">10</span>
+              </div>
+              <CircleQuestionMark className="text-gray-500 size-5" />
+            </div>
+            {/* connection status */}
+            <div className="col-span-1 rounded-2xl border border-gray-300/80 p-4 bg-white flex items-center gap-3">
+              <div className="flex flex-col flex-1 sm:gap-1">
+                <span className="text-gray-500 text-xs sm:text-sm">Status</span>
+                <span className=" text-sm sm:text-base font-semibold text-green-500">
+                  Connected
+                </span>
+              </div>
+              <CircleQuestionMark className="text-gray-500 size-5" />
+            </div>
+          </div>
+
           {/* how to use */}
-          <div className="bg-white p-4 rounded-2xl shadow flex flex-col gap-4 items-center">
+          <div className="bg-white p-3 sm:p-4 border border-gray-300/80 rounded-2xl flex flex-col gap-3 sm:gap-4 items-center">
             {/* header */}
-            <div className="flex items-center gap-3 pt-4 pb-2">
+            <div className="flex items-center gap-2 py-2">
               <div className="flex items-center">
                 <div className="bg-green-500 rounded-full">
                   <CircleQuestionMark className="text-white" />
                 </div>
               </div>
-              <span className="text-lg font-bold">How to use?</span>
+              <span className="text-base sm:text-lg font-semibold">
+                How to use?
+              </span>
             </div>
 
             {/* instructions */}
-            <div className="flex flex-col gap-2 mb-2">
+            <div className="flex flex-col gap-3 sm:gap-4 pb-2">
               {/* #1 */}
               <div className="flex items-center gap-3">
                 {/* number */}
@@ -410,7 +443,7 @@ export default function Home() {
                   <span className="text-white text-xs">1</span>
                 </div>
                 {/* information */}
-                <span className="text-sm text-gray-800">
+                <span className="text-sm text-gray-700">
                   Hold your RFID Card near the reader
                 </span>
               </div>
@@ -421,7 +454,7 @@ export default function Home() {
                   <span className="text-white text-xs">2</span>
                 </div>
                 {/* information */}
-                <span className="text-sm text-gray-800">
+                <span className="text-sm text-gray-700">
                   Wait for card recognition
                 </span>
               </div>
@@ -432,17 +465,20 @@ export default function Home() {
                   <span className="text-white text-xs">3</span>
                 </div>
                 {/* information */}
-                <span className="text-sm text-gray-800">
+                <span className="text-sm text-gray-700">
                   Follow on-screen instructions
                 </span>
               </div>
             </div>
           </div>
         </div>
+
         {/* Contact admin */}
-        <div className="flex flex-col items-center justify-center gap-1">
-          <span className="text-gray-500 text-sm">Having trouble?</span>
-          <button className="flex items-center gap-1 text-green-500 font-semibold text-sm">
+        <div className="flex flex-col items-center justify-center gap-1 mb-2">
+          <span className="text-gray-500 text-xs sm:text-sm">
+            Having trouble?
+          </span>
+          <button className="flex items-center gap-1 text-green-500 font-semibold text-xs sm:text-sm">
             <Headset className="text-green-500 size-4" />
             Contact Support
           </button>
