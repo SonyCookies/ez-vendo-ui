@@ -19,7 +19,7 @@ import { useRouter } from "next/navigation";
 // --- BILLING CONSTANTS ---
 const INITIAL_BALANCE = 0.0;
 const BILLING_RATE = 5.0; // P5.00
-const BILLING_INTERVAL_SECONDS = 30; // 10 minutes (600 seconds)
+const BILLING_INTERVAL_SECONDS = 600; // 10 minutes (600 seconds)
 const PING_INTERVAL_MS = 1000; // Check every 1 second
 const LOW_BALANCE_THRESHOLD = 10.0; // ⬅️ NEW CONSTANT: P10.00 warning level
 
@@ -169,8 +169,8 @@ export default function Dashboard() {
   const showNoCreditModal = isLowBalance && !isModalDismissed;
 
   return (
-    <div className="min-h-screen bg-gray-50 text-base">
-      <div className="flex flex-col gap-6 p-4">
+    <div className="min-h-dvh flex items-center justify-center bg-white text-sm sm:text-base">
+      <div className="flex flex-col gap-6 p-3 sm:p-4 md:px-0 w-full max-w-md">
         {/* header */}
         <div className="flex items-center justify-between">
           {/* left */}
@@ -180,11 +180,11 @@ export default function Dashboard() {
               <img
                 src="/default-profile.png"
                 alt="Profile"
-                className="size-9 rounded-full"
+                className="size-8 sm:size-9 rounded-full"
               />
             </div>
             {/* name */}
-            <span className="text-gray-800 text-lg">
+            <span className="text-gray-800 text-base sm:text-lg">
               Hello,{" "}
               <span className="text-green-500 font-semibold">Edward</span>
             </span>
@@ -192,12 +192,12 @@ export default function Dashboard() {
           {/* right */}
           <div className="flex items-center gap-2">
             {/* dark and light mode */}
-            <button className="rounded-full bg-white active:bg-gray-100 transition-colors duration-150 shadow p-3">
-              <Moon className="size-4" />
+            <button className="rounded-full border border-gray-300/80 bg-white hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors duration-150  p-2 sm:p-3">
+              <Moon className="size-4 sm:size-5" />
             </button>
             {/* notification */}
-            <button className="rounded-full bg-white active:bg-gray-100 transition-colors duration-150 shadow p-3">
-              <Bell className="size-4" />
+            <button className="rounded-full border border-gray-300/80 bg-white hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors duration-150  p-2 sm:p-3">
+              <Bell className="size-4 sm:size-5" />
             </button>
           </div>
         </div>
@@ -362,32 +362,34 @@ export default function Dashboard() {
 
       {/* Modal for no credits */}
       {showNoCreditModal && (
-        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-40">
-          <div className="bg-white rounded-2xl pt-6 px-4 pb-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
-            <div className="bg-red-100 size-13 flex items-center justify-center relative rounded-full z-50">
-              <BanknoteX className="text-red-500 size-7" />
+        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-40">
+          <div className="bg-white rounded-2xl py-6 px-4 flex flex-col items-center justify-center gap-5 w-full max-w-md">
+            <div className="bg-red-100 size-12 sm:size-13 flex items-center justify-center relative rounded-full z-50">
+              <BanknoteX className="text-red-500 size-6 sm:size-7" />
             </div>
             <div className="flex flex-col items-center justify-center gap-2">
-              <div className="flex flex-col gap-1 text-center">
-                <span className="text-lg font-semibold">
+              <div className="flex flex-col text-center">
+                <span className="text-lg sm:text-xl font-semibold">
                   No Available Credits
                 </span>
-                <span className="text-gray-500 text-sm">
+                <span className="text-gray-500 text-xs sm:text-sm">
                   Please add funds to your account first
                 </span>
               </div>
             </div>
 
             {/* how to add funds */}
-            <div className="flex flex-col items-center gap-4 rounded-lg bg-gray-100 py-4 px-4 w-full mt-2">
+            <div className="flex flex-col items-center gap-4 rounded-lg bg-gray-100 py-4 px-4 w-full">
               {/* header */}
-              <div className="flex items-center gap-3 py-2">
+              <div className="flex items-center gap-2">
                 <div className="flex items-center">
                   <div className="bg-green-500 rounded-full">
                     <CircleQuestionMark className="text-white" />
                   </div>
                 </div>
-                <span className="font-semibold">How to add funds?</span>
+                <span className="text-sm sm:text-base font-semibold">
+                  How to use?
+                </span>
               </div>
 
               {/* instructions */}
@@ -395,7 +397,7 @@ export default function Dashboard() {
                 {/* #1 */}
                 <div className="flex items-center gap-3">
                   {/* number */}
-                  <div className="flex items-center justify-center text-center bg-green-500 size-6 rounded-full">
+                  <div className="flex items-center justify-center text-center bg-green-500 size-5 rounded-full">
                     <span className="text-white text-xs">1</span>
                   </div>
                   {/* information */}
@@ -408,7 +410,7 @@ export default function Dashboard() {
 
             <button
               onClick={handleModalClose} // ⬅️ Closes modal, sets isModalDismissed=true
-              className="w-full my-2 px-4 py-2 border border-green-500 bg-green-500 text-white hover:border-green-600 hover:bg-green-600 active:border-green-700 active:bg-green-700 transition-colors duration-150 rounded-full flex items-center justify-center gap-2"
+              className="cursor-pointer text-sm sm:text-base w-full px-4 py-2 border border-green-500 bg-green-500 text-white hover:border-green-500/90 hover:bg-green-500/90  active:border-green-600 active:bg-green-600 transition-colors duration-150 rounded-full flex items-center justify-center gap-2"
             >
               I understand
             </button>
@@ -418,15 +420,17 @@ export default function Dashboard() {
 
       {/* ⬅️ NEW MODAL: Session Expired/Insufficient Funds */}
       {showSessionExpiredModal && (
-        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-40">
-          <div className="bg-white rounded-2xl pt-6 px-4 pb-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
-            <div className="bg-red-100 size-13 flex items-center justify-center relative rounded-full z-50">
-              <TimerOff className="text-red-500 size-7" />
+        <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-40">
+          <div className="bg-white rounded-2xl py-6 px-4 flex flex-col items-center justify-center gap-5 w-full max-w-md">
+            <div className="bg-red-100 size-12 sm:size-13 flex items-center justify-center relative rounded-full z-50">
+              <TimerOff className="text-red-500 size-6 sm:size-7" />
             </div>
-            <div className="flex flex-col items-center justify-center gap-2 pb-4">
-              <div className="flex flex-col gap-1 text-center">
-                <span className="text-lg font-semibold">Session Expired</span>
-                <span className="text-gray-500 text-sm">
+            <div className="flex flex-col items-center justify-center gap-2 pb-2">
+              <div className="flex flex-col text-center">
+                <span className="text-base sm:text-lg font-semibold">
+                  Session Expired
+                </span>
+                <span className="text-gray-500 text-xs sm:text-sm">
                   Connect again by tapping your RFID Card
                 </span>
               </div>
@@ -435,21 +439,30 @@ export default function Dashboard() {
         </div>
       )}
 
-      <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-40">
-        <div className="bg-white rounded-2xl pt-6 px-4 pb-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
-          <div className="bg-red-100 size-13 flex items-center justify-center relative rounded-full z-50">
-            <TimerOff className="text-red-500 size-7" />
+      {/* <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-40">
+        <div className="bg-white rounded-2xl py-6 px-4 flex flex-col items-center justify-center gap-5 w-full max-w-md">
+          <div className="bg-red-100 size-12 sm:size-13 flex items-center justify-center relative rounded-full z-50">
+            <TimerOff className="text-red-500 size-6 size-7" />
           </div>
-          <div className="flex flex-col items-center justify-center gap-2 pb-4">
-            <div className="flex flex-col gap-1 text-center">
-              <span className="text-lg font-semibold">No Available Credits</span>
-              <span className="text-gray-500 text-sm">
+
+          <div className="flex flex-col items-center justify-center gap-2">
+            <div className="flex flex-col text-center">
+              <span className="text-lg sm:text-xl font-semibold">
+                No Available Credits
+              </span>
+              <span className="text-gray-500 text-xs sm:text-sm">
                 Your available credit is P0.00. Top-up again to continue
               </span>
             </div>
           </div>
+          <button
+            onClick={handleModalClose} // ⬅️ Closes modal, sets isModalDismissed=true
+            className="cursor-pointer text-sm sm:text-base w-full px-4 py-2 border border-green-500 bg-green-500 text-white hover:border-green-500/90 hover:bg-green-500/90  active:border-green-600 active:bg-green-600 transition-colors duration-150 rounded-full flex items-center justify-center gap-2"
+          >
+            I understand
+          </button>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 }
