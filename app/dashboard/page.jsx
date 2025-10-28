@@ -11,6 +11,7 @@ import {
   ChevronRight,
   BanknoteArrowUp,
   TimerOff,
+  TriangleAlert,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -20,6 +21,7 @@ const INITIAL_BALANCE = 0.0;
 const BILLING_RATE = 5.0; // P5.00
 const BILLING_INTERVAL_SECONDS = 30; // 10 minutes (600 seconds)
 const PING_INTERVAL_MS = 1000; // Check every 1 second
+const LOW_BALANCE_THRESHOLD = 10.0; // ⬅️ NEW CONSTANT: P10.00 warning level
 
 export default function Dashboard() {
   const router = useRouter(); // ⬅️ Initialize router
@@ -360,7 +362,7 @@ export default function Dashboard() {
 
       {/* Modal for no credits */}
       {showNoCreditModal && (
-        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-50">
+        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-40">
           <div className="bg-white rounded-2xl pt-6 px-4 pb-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
             <div className="bg-red-100 size-13 flex items-center justify-center relative rounded-full z-50">
               <BanknoteX className="text-red-500 size-7" />
@@ -416,7 +418,7 @@ export default function Dashboard() {
 
       {/* ⬅️ NEW MODAL: Session Expired/Insufficient Funds */}
       {showSessionExpiredModal && (
-        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-50">
+        <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-40">
           <div className="bg-white rounded-2xl pt-6 px-4 pb-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
             <div className="bg-red-100 size-13 flex items-center justify-center relative rounded-full z-50">
               <TimerOff className="text-red-500 size-7" />
@@ -432,6 +434,22 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-4 z-40">
+        <div className="bg-white rounded-2xl pt-6 px-4 pb-4 flex flex-col items-center justify-center gap-4 w-full max-w-md">
+          <div className="bg-red-100 size-13 flex items-center justify-center relative rounded-full z-50">
+            <TimerOff className="text-red-500 size-7" />
+          </div>
+          <div className="flex flex-col items-center justify-center gap-2 pb-4">
+            <div className="flex flex-col gap-1 text-center">
+              <span className="text-lg font-semibold">No Available Credits</span>
+              <span className="text-gray-500 text-sm">
+                Your available credit is P0.00. Top-up again to continue
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
