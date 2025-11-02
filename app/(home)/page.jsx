@@ -369,7 +369,7 @@ export default function Home() {
                     text-white
                     text-lg
                     font-semibold
-                    shadow-lg
+                    shadow
                     hover:bg-green-500
                     transition-colors
                     duration-150
