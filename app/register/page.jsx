@@ -8,6 +8,7 @@ import {
 } from "lucide-react"; // Imported new icons
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation"; // For redirection
+import Link from "next/link";
 
 // Helper function to validate email format
 const validateEmail = (email) => {
@@ -177,7 +178,7 @@ export default function Register() {
     const base =
       "px-3 py-2 rounded-md outline-none border transition-colors duration-150 placeholder:text-gray-500";
     if (name === "rfid") {
-      return `${base} border-gray-300 bg-gray-100 text-gray-500`;
+      return `${base} border-gray-300 bg-gray-100/80 text-gray-500`;
     }
     const borderClass = errors[name]
       ? "border-red-400 focus:border-red-400"
@@ -187,9 +188,9 @@ export default function Register() {
 
   return (
     <div className="min-h-dvh text-sm sm:text-base flex flex-col items-center justify-center p-3 sm:p-4 md:px-0 bg-white">
-      <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-md">
+      <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-md ">
         {/* Intro */}
-        <div className="flex text-center flex-col">
+        <div className="flex text-center flex-col pt-2">
           <span className="text-xl sm:text-2xl font-bold">
             Welcome <span className="text-green-500">New User</span>
           </span>
@@ -197,10 +198,15 @@ export default function Register() {
         </div>
 
         {/* Dynamic Timer Display */}
-        <div className="flex flex-col items-center justify-center gap-1">
-          <span className="text-gray-500 text-sm">Time left</span>
+        <div className="flex flex-col items-center justify-center gap-2">
+          <div className="flex flex-col text-center gap-1">
+            <span className=" text-sm">Time remaining</span>
+            <span className="text-gray-500 text-xs">
+              ( 1 out of 3 attempts )
+            </span>
+          </div>
           <span
-            className="text-base sm:text-lg font-semibold"
+            className="text-lg sm:text-xl font-semibold"
             // Apply dynamic color to the timer text
             style={{
               color: getColorForCountdown(),
@@ -221,9 +227,9 @@ export default function Register() {
             }`}
           >
             {globalMessage.type === "error" ? (
-              <MessageCircleWarning className="size-6" />
+              <MessageCircleWarning className="size-6 sm:size-7" />
             ) : (
-              <CheckCircleBig className="size-7 sm:size-8" />
+              <CheckCircleBig className="size-6 sm:size-7" />
             )}
             <span className="text-xs sm:text-sm">{globalMessage.text}</span>
           </div>
@@ -234,7 +240,10 @@ export default function Register() {
           {/* first and last fields */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-1 flex flex-col gap-1">
-              <label htmlFor="firstName" className="text-xs sm:text-sm text-gray-800">
+              <label
+                htmlFor="firstName"
+                className="text-xs sm:text-sm text-gray-800"
+              >
                 First Name
               </label>
               <input
@@ -255,7 +264,10 @@ export default function Register() {
             </div>
 
             <div className="col-span-1 flex flex-col gap-1">
-              <label htmlFor="lastName" className="text-xs sm:text-sm text-gray-800">
+              <label
+                htmlFor="lastName"
+                className="text-xs sm:text-sm text-gray-800"
+              >
                 Last Name
               </label>
               <input
@@ -314,7 +326,10 @@ export default function Register() {
           </div>
           {/* password */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="password" className="text-xs sm:text-sm text-gray-800">
+            <label
+              htmlFor="password"
+              className="text-xs sm:text-sm text-gray-800"
+            >
               Password
             </label>
             <input
@@ -335,7 +350,10 @@ export default function Register() {
           </div>
           {/* confirm password */}
           <div className="flex flex-col gap-1">
-            <label htmlFor="confirmPassword" className="text-xs sm:text-sm text-gray-800">
+            <label
+              htmlFor="confirmPassword"
+              className="text-xs sm:text-sm text-gray-800"
+            >
               Confirm password
             </label>
             <input
@@ -351,40 +369,47 @@ export default function Register() {
               disabled={isSubmitting || timeLeft <= 0}
             />
             {errors.confirmPassword && (
-              <span className="text-xs text-red-400">{errors.confirmPassword}</span>
+              <span className="text-xs text-red-400">
+                {errors.confirmPassword}
+              </span>
             )}
           </div>
 
-          {/* Register Button (Submission State) */}
-          <button
-            type="submit"
-            className={`flex cursor-pointer items-center justify-center gap-2 my-2 px-4 py-2 rounded-full text-white transition-colors duration-150 ${
-              isSubmitting || timeLeft <= 0 // Disable button if submitting or time is up
-                ? "bg-green-700 cursor-not-allowed"
-                : "bg-green-500 hover:bg-green-500/90 active:bg-green-600"
-            }`}
-            disabled={isSubmitting || timeLeft <= 0}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="size-5 animate-spin" />
-                <span>Registering...</span>
-              </>
-            ) : (
-              <span>Register</span>
-            )}
-          </button>
+          <div className="flex flex-col gap-2 my-2">
+            {/* Register Button (Submission State) */}
+            <button
+              type="submit"
+              className={`flex  items-center justify-center gap-2 px-4 py-2 rounded-full text-white transition-colors duration-150 ${
+                isSubmitting || timeLeft <= 0 // Disable button if submitting or time is up
+                  ? "bg-green-700 cursor-not-allowed"
+                  : "bg-green-500 hover:bg-green-500/90 active:bg-green-600 cursor-pointer"
+              }`}
+              disabled={isSubmitting || timeLeft <= 0}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="size-5 animate-spin" />
+                  <span>Registering...</span>
+                </>
+              ) : (
+                <span>Register</span>
+              )}
+            </button>
+
+            <Link
+              href="/"
+              className={`flex  items-center justify-center gap-2 px-4 border border-gray-300 py-2 rounded-full transition-colors duration-150 ${
+                isSubmitting || timeLeft <= 0 // Disable link if submitting or time is up
+                  ? "bg-gray-100 cursor-not-allowed"
+                  : "hover:bg-gray-50 active:bg-gray-100 cursor-pointer"
+              }`}
+              disabled={isSubmitting || timeLeft <= 0}
+            >
+              Back to Captive Portal
+            </Link>
+          </div>
         </form>
       </div>
-
-      {/* bottom */}
-      {/* <div className="flex flex-col items-center justify-center gap-1">
-        <span className="text-gray-500 text-sm">Having trouble?</span>
-        <button className="flex items-center gap-1 text-green-500 font-semibold text-sm">
-          <Headset className="text-green-500 size-4" />
-          Contact Support
-        </button>
-      </div> */}
     </div>
   );
 }
