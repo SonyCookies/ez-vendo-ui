@@ -8,6 +8,7 @@ import {
   Search,
   CheckCircle,
   UserPlus,
+  WifiOff,
 } from "lucide-react"; // Added new icons
 
 import { useState, useEffect, useCallback } from "react";
@@ -48,6 +49,7 @@ const TapLoadingModal = ({ tapState, onTimeout, onDetected, setTapState }) => {
     setTapState(TAP_PHASE.CLOSED);
     onTimeout();
   }, [setTapState, onTimeout]);
+
 
   useEffect(() => {
     if (tapState !== TAP_PHASE.SCANNING) {
@@ -249,6 +251,8 @@ export default function Home() {
   const [tapState, setTapState] = useState(TAP_PHASE.CLOSED);
   const [failedAttempts, setFailedAttempts] = useState(0); // ⬅️ NEW STATE
   const MAX_ATTEMPTS = 3; // ⬅️ NEW CONSTANT
+  const [isOnline, setIsOnline] = useState(true);
+
   const router = useRouter();
 
   const handleStartScan = () => {
@@ -289,6 +293,27 @@ export default function Home() {
       }
     }, 3000);
   };
+
+  
+  useEffect(() => {
+    // Set the initial state when component mounts (only runs in browser)
+    if (typeof navigator !== "undefined") {
+      setIsOnline(navigator.onLine);
+    }
+
+    // Create event handlers
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    // Add event listeners
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline); // Cleanup listeners on component unmount
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
   return (
     <div className="min-h-dvh container mx-auto w-full max-w-md text-xs sm:text-base">
       {/* Main */}
@@ -492,6 +517,27 @@ export default function Home() {
         onTimeout={handleTimeout}
         onDetected={handleCardDetected}
       />
+
+      {!isOnline && (
+        <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
+          <div className="bg-white rounded-2xl py-6 px-4 flex flex-col items-center justify-center gap-5 w-full max-w-md">
+            <div className="bg-red-100 size-12 sm:size-13 flex items-center justify-center relative rounded-full z-50">
+              <WifiOff className="text-red-500 size-6 sm:size-7" />
+            </div>
+            <div className="flex flex-col items-center justify-center gap-2 ">
+              <div className="flex flex-col text-center">
+                <span className="text-base sm:text-lg font-semibold">
+                  Internet Unavailable
+                </span>
+                <span className="text-gray-500 text-xs sm:text-sm">
+                  Internet is currently unavailable. We are working to restore
+                  service.
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
