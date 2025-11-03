@@ -16,6 +16,7 @@ import {
   CircleCheckBig,
   Minus,
   BanknoteArrowDown,
+  WifiOff,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -24,7 +25,7 @@ import Link from "next/link";
 // CONSTANTS
 const INITIAL_BALANCE = 0.0;
 const BILLING_RATE = 5.0; // P5.00
-const BILLING_INTERVAL_SECONDS = 30; //600 for 10 minutes
+const BILLING_INTERVAL_SECONDS = 600; //600 for 10 minutes
 const LOW_BALANCE_THRESHOLD = 10.0;
 const PING_INTERVAL_MS = 1000;
 const TRANSACTION_TYPE = {
@@ -49,6 +50,7 @@ export default function Dashboard() {
   const [showStopConfirm, setShowStopConfirm] = useState(false);
   const [showStopSuccess, setShowStopSuccess] = useState(false);
   const [showTopUpInstructions, setShowTopUpInstructions] = useState(false);
+  const [selectedTransaction, setSelectedTransaction] = useState(null);
 
   // --- CALCULATED STATE / DYNAMIC STYLES ---
   const isLowBalance = userBalance <= 0;
@@ -80,6 +82,7 @@ export default function Dashboard() {
         // 2. Update History
         setTransactionHistory((currentHistory) => [
           {
+            id: `D-${Date.now()}`, // ⬅️ Add unique ID
             type: TRANSACTION_TYPE.DEDUCTION,
             amount: BILLING_RATE,
             date: new Date(),
@@ -110,6 +113,7 @@ export default function Dashboard() {
   // 4. Top-up / Dismissal Handlers
   const handleTopUp = () => {
     setShowTopUpInstructions(true);
+    setShowLowCreditWarning(false)
   };
 
   const finalizeTopUp = () => {
@@ -117,7 +121,12 @@ export default function Dashboard() {
 
     // 🛑 FIX: Use the functional update form for setTransactionHistory
     setTransactionHistory((currentHistory) => [
-      { type: TRANSACTION_TYPE.TOP_UP, amount: topUpAmount, date: new Date() },
+      {
+        id: `T-${Date.now()}`, // ⬅️ Add unique ID
+        type: TRANSACTION_TYPE.TOP_UP,
+        amount: topUpAmount,
+        date: new Date(),
+      },
       ...currentHistory,
     ]);
 
@@ -203,6 +212,19 @@ export default function Dashboard() {
     return date.toLocaleDateString("en-US", options);
   };
 
+  const formatModalDate = (date) => {
+    const options = {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "numeric",
+      second: "numeric",
+      hour12: true,
+    };
+    return date.toLocaleDateString("en-US", options);
+  };
+
   const formatTime = (totalSeconds, showHours = false) => {
     const hours = Math.floor(totalSeconds / 3600);
     const minutes = Math.floor((totalSeconds % 3600) / 60);
@@ -254,7 +276,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="min-h-dvh flex justify-center text-sm sm:text-base">
+    <div className="min-h-dvh flex justify-center text-sm sm:text-base sm:bg-white">
       <div className="flex flex-col gap-6 p-3 sm:p-4 md:px-0 w-full max-w-md">
         {/* header */}
         <div className="flex items-center justify-between">
@@ -282,11 +304,11 @@ export default function Dashboard() {
           {/* right */}
           <div className="flex items-center gap-2">
             {/* dark and light mode */}
-            <button className="rounded-full border border-gray-300/80 bg-white hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors duration-150  p-2 sm:p-3">
+            <button className="rounded-full border border-gray-300/80 bg-white hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors duration-150  p-2 ">
               <Moon className="size-4 sm:size-5" />
             </button>
             {/* notification */}
-            <button className="rounded-full border border-gray-300/80 bg-white hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors duration-150  p-2 sm:p-3">
+            <button className="rounded-full border border-gray-300/80 bg-white hover:bg-gray-50 active:bg-gray-100 cursor-pointer transition-colors duration-150  p-2 ">
               <Bell className="size-4 sm:size-5" />
             </button>
           </div>
@@ -353,7 +375,7 @@ export default function Dashboard() {
                   className="bg-white cursor-pointer  text-sm sm:text-base hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150 text-green-500 rounded-full px-4 py-2 flex items-center gap-2"
                 >
                   <Plus className="size-5" />
-                  Top up
+                  Top-up
                 </button>
               </div>
             </div>
@@ -409,7 +431,8 @@ export default function Dashboard() {
                   return (
                     <div
                       key={index}
-                      className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-gray-300 bg-white"
+                      onClick={() => setSelectedTransaction(tx)}
+                      className="flex items-center justify-between gap-4 p-5 rounded-2xl border border-gray-300 bg-white hover:bg-gray-50 active:bg-gray-100 transition-colors duration-150 cursor-pointer"
                     >
                       {/* left */}
                       <div className="flex items-center gap-3">
@@ -464,6 +487,7 @@ export default function Dashboard() {
         </div>
       </div>
 
+
       {/* Modal for No credits */}
       {showNoCreditModal && (
         <div className="flex min-h-screen flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-40">
@@ -491,7 +515,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
       {/* Modal for Top-up Instructions */}
       {showTopUpInstructions && (
         <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
@@ -543,7 +566,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
       {/* Modal for Low Credit Warning (Persistent) */}
       {showLowCreditWarning && (
         <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
@@ -587,7 +609,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
       {/* Modal for Session Expired/Insufficient Funds */}
       {showSessionExpiredModal && (
         <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-40">
@@ -616,7 +637,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
       {/* Modal for Stop Session Confirmation */}
       {showStopConfirm && (
         <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
@@ -664,7 +684,6 @@ export default function Dashboard() {
           </div>
         </div>
       )}
-
       {/* Modal for Post-Stop Session */}
       {showStopSuccess && (
         <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
@@ -694,6 +713,86 @@ export default function Dashboard() {
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Modal for Transaction Details */}
+      {selectedTransaction && (
+        <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
+          <div className="bg-white rounded-2xl py-6 px-4 flex flex-col items-center justify-center gap-5 w-full max-w-md">
+            {(() => {
+              // Get details for the *selected* transaction
+              const {
+                Icon,
+                SignIcon,
+                colorClass,
+                bgColorClass,
+              } = getTransactionDetails(selectedTransaction.type);
+
+              return (
+                <>
+                  <div
+                    className={`size-12 sm:size-13 flex items-center justify-center relative rounded-full z-50 ${
+                      colorClass.includes("green")
+                        ? "bg-green-100"
+                        : "bg-red-100"
+                    }`}
+                  >
+                    <Icon className={`size-6 sm:size-7 ${colorClass}`} />
+                  </div>
+                  <div className="flex flex-col items-center justify-center gap-2 ">
+                    <div className="flex flex-col text-center">
+                      <span className="text-base sm:text-lg font-semibold">
+                        {selectedTransaction.type} Transaction
+                      </span>
+                      <span className="text-gray-500 text-xs sm:text-sm">
+                        {formatModalDate(selectedTransaction.date)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-center justify-center py-2">
+                    <span className="text-gray-500 text-xs sm:text-sm">
+                      Amount
+                    </span>
+                    <span
+                      className={`flex items-center font-semibold text-base sm:text-lg ${colorClass}`}
+                    >
+                      <SignIcon className="size-4 sm:size-5" />P
+                      {selectedTransaction.amount.toFixed(2)}
+                    </span>
+                  </div>
+                </>
+              );
+            })()}
+            {/* Details */}{" "}
+            <div className="flex w-full items-center justify-between rounded-lg p-4 bg-gray-100">
+              {/* left */}
+              <div className="flex flex-col">
+                <span className="text-xs sm:text-sm font-semibold">
+                  Edward Gatbonton
+                </span>
+                <span className="text-xs sm:text-sm text-gray-500">
+                  123456789
+                </span>
+              </div>
+              {/* right */}
+              <div className="flex flex-col">
+                <span className="text-xs sm:text-sm font-semibold">
+                  Transaction ID:
+                </span>
+                {/* Transaction ID */}
+                <span className="text-xs sm:text-sm text-gray-500">
+                  {selectedTransaction.id}
+                </span>
+              </div>
+            </div>
+            {/* close specific transaction log modal */}{" "}
+            <button
+              onClick={() => setSelectedTransaction(null)} // ⬅️ Close modal handler
+              className="cursor-pointer text-sm sm:text-base w-full px-4 py-2 border border-green-500 bg-green-500 text-white hover:border-green-500/90 hover:bg-green-500/90  active:border-green-600 active:bg-green-600 transition-colors duration-150 rounded-full flex items-center justify-center gap-2"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

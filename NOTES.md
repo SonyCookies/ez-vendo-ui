@@ -2,6 +2,10 @@ TO FIX / IMPLEMENT:
 
 GENERAL:
     - Added simple loading state for every web page (DONE)
+     - Implement filter function (TRANSACTION PAGE) (PENDING)
+            - Sort by:
+                - Date
+                - Amount
 
 BRANCHES:
 1. ui-layout-v2
@@ -24,8 +28,33 @@ BRANCHES:
         - Implement Profile Page (DONE)
 
 2. transaction-page
-    a. Implement:
-        - Today's Transactions
-        - Yesterday's Transactions
-        - Last 7 Day's Transactions
+    a. Transaction Page: (DONE)
+        - Implement:
+            - Today's Transactions
+            - Yesterday's Transactions
+            - Last 7 Day's Transactions
+        - Implement a specific modal for certain transaction logs: (DONE)
+            Fields:
+                - Rfid No.
+                - Account Name 
+                - Transaction Id 
+                - Amount 
+       
+
+
+    b. Home
+        - WAN Status Modal: (DONE)
+            - Show Disconnected Modal whenever the internet communication is down or do not have any internet connectivity
+    
+    c. Dashboard:
+        - Implement a specific modal for certain transaction logs:
+            Fields:
+                - Rfid No.(DONE)
+                - Account Name (DONE)
+                - Transaction Id (DONE)
+                - Amount (DONE)
+
+
+        
+        
     
