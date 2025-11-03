@@ -24,7 +24,11 @@ export default function Profile() {
         </div>
         {/* main */}
         <div className="flex flex-col gap-4">
-            asd
+            {/* profile card */}
+
+            {/* fields */}
+
+            {/* buttons */}
         </div>
       </div>
     </div>
