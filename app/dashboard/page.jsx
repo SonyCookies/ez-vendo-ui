@@ -13,19 +13,19 @@ import {
   TimerOff,
   TriangleAlert,
   CircleStop,
-  CircleCheckBig,
+  CheckCircle,
   Minus,
   BanknoteArrowDown,
   WifiOff,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { db } from "@/app/config/firebase";
+import { doc, getDoc, updateDoc, increment, serverTimestamp, setDoc } from "firebase/firestore";
 
 // CONSTANTS
 const INITIAL_BALANCE = 0.0;
-const BILLING_RATE = 5.0; // P5.00
-const BILLING_INTERVAL_SECONDS = 600; //600 for 10 minutes
 const LOW_BALANCE_THRESHOLD = 10.0;
 const PING_INTERVAL_MS = 1000;
 const TRANSACTION_TYPE = {
@@ -35,11 +35,21 @@ const TRANSACTION_TYPE = {
 
 export default function Dashboard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const rfidFromUrl = searchParams.get("rfid");
+
+  // --- USER DATA STATE ---
+  const [userData, setUserData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [hasAutoStarted, setHasAutoStarted] = useState(false);
+
+  // --- SYSTEM CONFIG STATE ---
+  const [billingRatePerMinute, setBillingRatePerMinute] = useState(0.5); // Default P0.50/min
+  const [configLoading, setConfigLoading] = useState(true);
 
   // --- STATE MANAGEMENT ---
   const [userBalance, setUserBalance] = useState(INITIAL_BALANCE);
   const [isSessionActive, setIsSessionActive] = useState(false);
-  const [sessionTimer, setSessionTimer] = useState(0);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [transactionHistory, setTransactionHistory] = useState([]);
 
@@ -59,6 +69,14 @@ export default function Dashboard() {
   const showNoCreditModal = isLowBalance && !isZeroModalDismissed;
   const disableControlButtons = isLowBalance;
 
+  // Calculate time remaining based on balance and billing rate
+  const timeRemainingMinutes = billingRatePerMinute > 0 
+    ? Math.floor(userBalance / billingRatePerMinute) 
+    : 0;
+  const timeRemainingSeconds = billingRatePerMinute > 0
+    ? Math.floor((userBalance / billingRatePerMinute) * 60)
+    : 0;
+
   const sessionButtonText = isSessionActive ? "Stop" : "Start";
   const pulsingBaseColor = isSessionActive ? "bg-red" : "bg-green";
   const sessionBaseColor = isSessionActive
@@ -68,41 +86,69 @@ export default function Dashboard() {
     ? `bg-gray-400 text-white cursor-not-allowed`
     : `${sessionBaseColor} text-white cursor-pointer`;
 
-  const handleStartStopSession = () => {
+  const handleStartStopSession = async () => {
     if (isSessionActive) {
-      setShowStopConfirm(true); // This is fine
+      setShowStopConfirm(true);
     } else {
       // START LOGIC
-      if (userBalance >= BILLING_RATE) {
-        // 🛑 CRITICAL FIX: Update states sequentially, NOT nested.
+      if (userBalance > 0) {
+        try {
+          // Just mark session as started in Firestore
+          // Balance will deplete based on time used
+          const userDocRef = doc(db, "users", rfidFromUrl);
+          await updateDoc(userDocRef, {
+            sessionStartedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          });
 
-        // 1. Update Balance
-        setUserBalance((prevBalance) => prevBalance - BILLING_RATE);
-
-        // 2. Update History
-        setTransactionHistory((currentHistory) => [
-          {
-            id: `D-${Date.now()}`, // ⬅️ Add unique ID
-            type: TRANSACTION_TYPE.DEDUCTION,
-            amount: BILLING_RATE,
-            date: new Date(),
-          },
-          ...currentHistory,
-        ]);
-
-        // 3. Set Timer
-        setSessionTimer(BILLING_INTERVAL_SECONDS);
-
-        // 4. Activate Session (This triggers the re-render)
-        setIsSessionActive(true);
+          // Activate Session (no upfront deduction)
+          setIsSessionActive(true);
+          
+          console.log("✅ Session started manually");
+        } catch (error) {
+          console.error("Error starting session:", error);
+        }
       }
     }
   };
-  const finalizeStopSession = () => {
-    setIsSessionActive(false);
-    setSessionTimer(0);
-    setShowStopConfirm(false);
+  const finalizeStopSession = async () => {
+    // Calculate total cost before stopping
+    const minutesUsed = Math.ceil(elapsedSeconds / 60);
+    const costIncurred = minutesUsed * billingRatePerMinute;
+    const amountToDeduct = Math.min(costIncurred, userBalance); // Don't go negative
 
+    try {
+      // Deduct the actual amount used when stopping
+      const userDocRef = doc(db, "users", rfidFromUrl);
+      await updateDoc(userDocRef, {
+        balance: increment(-amountToDeduct),
+        sessionStartedAt: null, // Clear session start
+        updatedAt: serverTimestamp(),
+      });
+
+      // Update local state
+      setUserBalance((prev) => Math.max(0, prev - amountToDeduct));
+
+      // Add deduction transaction
+      setTransactionHistory((currentHistory) => [
+        {
+          id: `D-${Date.now()}`,
+          type: TRANSACTION_TYPE.DEDUCTION,
+          amount: amountToDeduct,
+          date: new Date(),
+          minutesUsed: minutesUsed,
+        },
+        ...currentHistory,
+      ]);
+
+      console.log(`💰 Deducted P${amountToDeduct.toFixed(2)} for ${minutesUsed} minutes`);
+    } catch (error) {
+      console.error("Error stopping session:", error);
+    }
+
+    setIsSessionActive(false);
+    setElapsedSeconds(0); // Reset elapsed time
+    setShowStopConfirm(false);
     setShowStopSuccess(true); // Show success modal (which redirects after 3s)
   };
 
@@ -116,26 +162,39 @@ export default function Dashboard() {
     setShowLowCreditWarning(false)
   };
 
-  const finalizeTopUp = () => {
+  const finalizeTopUp = async () => {
     const topUpAmount = 15.0;
 
-    // 🛑 FIX: Use the functional update form for setTransactionHistory
-    setTransactionHistory((currentHistory) => [
-      {
-        id: `T-${Date.now()}`, // ⬅️ Add unique ID
-        type: TRANSACTION_TYPE.TOP_UP,
-        amount: topUpAmount,
-        date: new Date(),
-      },
-      ...currentHistory,
-    ]);
+    try {
+      // Update balance in Firestore
+      const userDocRef = doc(db, "users", rfidFromUrl);
+      await updateDoc(userDocRef, {
+        balance: increment(topUpAmount),
+        updatedAt: serverTimestamp(),
+      });
 
-    setUserBalance((prev) => prev + topUpAmount);
-    setShowTopUpInstructions(false);
+      // Update local state
+      setTransactionHistory((currentHistory) => [
+        {
+          id: `T-${Date.now()}`,
+          type: TRANSACTION_TYPE.TOP_UP,
+          amount: topUpAmount,
+          date: new Date(),
+        },
+        ...currentHistory,
+      ]);
 
-    // Reset dismissal states
-    setIsZeroModalDismissed(false);
-    setShowLowCreditWarning(false);
+      setUserBalance((prev) => prev + topUpAmount);
+      setShowTopUpInstructions(false);
+
+      // Reset dismissal states
+      setIsZeroModalDismissed(false);
+      setShowLowCreditWarning(false);
+
+      console.log("✅ Balance topped up successfully");
+    } catch (error) {
+      console.error("❌ Error topping up balance:", error);
+    }
   };
 
   // ⬅️ NEW HANDLER: Closes the instruction modal without adding credit (optional)
@@ -152,26 +211,166 @@ export default function Dashboard() {
   const handleWarningDismiss = () => {
     setShowLowCreditWarning(false);
   };
-  // Timer and Effect loops
-  // Session Timer Loop (Decrements sessionTimer)
+
+  // --- FETCH SYSTEM CONFIG FROM FIRESTORE ---
   useEffect(() => {
-    if (!isSessionActive) {
+    const fetchSystemConfig = async () => {
+      try {
+        const configDocRef = doc(db, "system_config", "global_settings");
+        const configSnap = await getDoc(configDocRef);
+
+        if (configSnap.exists()) {
+          const config = configSnap.data();
+          setBillingRatePerMinute(config.billingRatePerMinute || 0.5);
+          console.log("✅ System config loaded:", config);
+        } else {
+          console.warn("⚠️ System config not found, using defaults");
+          // Create default config if it doesn't exist
+          await setDoc(configDocRef, {
+            configId: "global_settings",
+            billingRatePerMinute: 0.5, // P0.50 per minute
+            lastUpdatedBy: "system",
+            lastUpdatedAt: serverTimestamp(),
+          });
+          setBillingRatePerMinute(0.5);
+        }
+        setConfigLoading(false);
+      } catch (error) {
+        console.error("Error fetching system config:", error);
+        setBillingRatePerMinute(0.5); // Fallback to default
+        setConfigLoading(false);
+      }
+    };
+
+    fetchSystemConfig();
+  }, []);
+
+  // --- FETCH USER DATA FROM FIRESTORE ---
+  useEffect(() => {
+    const fetchUserData = async () => {
+      if (!rfidFromUrl) {
+        // No RFID provided, redirect to home
+        router.push("/");
+        return;
+      }
+
+      try {
+        // Add timeout protection for captive portal (30 seconds)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timeout")), 30000)
+        );
+
+        const userDocRef = doc(db, "users", rfidFromUrl);
+        const userSnap = await Promise.race([
+          getDoc(userDocRef),
+          timeoutPromise
+        ]);
+
+        if (userSnap.exists()) {
+          const data = userSnap.data();
+          
+          // Check if user is actually registered
+          if (!data.isRegistered) {
+            console.log("User not registered, redirecting...");
+            router.push("/");
+            return;
+          }
+
+          setUserData(data);
+          const currentBalance = data.balance || 0;
+          setUserBalance(currentBalance);
+          
+          // Check if user has sufficient balance to auto-start session
+          // Only auto-start if we haven't already started (prevents double-start on refresh)
+          if (currentBalance > 0 && !hasAutoStarted) {
+            // Just update last login and start session
+            // Balance will deplete continuously based on time
+            await Promise.race([
+              updateDoc(userDocRef, {
+                lastLogin: serverTimestamp(),
+                sessionStartedAt: serverTimestamp(), // Track when session started
+                updatedAt: serverTimestamp(),
+              }),
+              timeoutPromise
+            ]);
+
+            // Start session immediately (no upfront deduction)
+            setIsSessionActive(true);
+            setHasAutoStarted(true);
+
+            console.log("✅ Session started automatically");
+          } else if (hasAutoStarted) {
+            // Already auto-started (page refresh), just update lastLogin
+            await Promise.race([
+              updateDoc(userDocRef, {
+                lastLogin: serverTimestamp(),
+              }),
+              timeoutPromise
+            ]);
+            console.log("ℹ️ Session already active, login time updated");
+          } else {
+            // No balance - just update last login
+            await Promise.race([
+              updateDoc(userDocRef, {
+                lastLogin: serverTimestamp(),
+              }),
+              timeoutPromise
+            ]);
+            
+            console.log("⚠️ No balance available");
+          }
+
+          setLoading(false);
+        } else {
+          console.log("User not found, redirecting...");
+          router.push("/");
+        }
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        router.push("/");
+      }
+    };
+
+    fetchUserData();
+  }, [rfidFromUrl, router]);
+
+  // Timer and Effect loops
+  // Balance Depletion Loop (Depletes balance every minute based on billing rate)
+  useEffect(() => {
+    if (!isSessionActive || configLoading) {
       return;
     }
-    const sessionLoop = setInterval(() => {
-      setSessionTimer((prevTimer) => {
-        if (prevTimer <= 1) {
-          clearInterval(sessionLoop);
+
+    // Check balance every second and deplete every minute
+    const balanceLoop = setInterval(() => {
+      setUserBalance((prevBalance) => {
+        // Calculate cost per second
+        const costPerSecond = billingRatePerMinute / 60;
+        const newBalance = prevBalance - costPerSecond;
+
+        // If balance reaches 0 or below, stop session
+        if (newBalance <= 0) {
+          clearInterval(balanceLoop);
           setIsSessionActive(false);
           setShowSessionExpiredModal(true);
+          
+          // Save final balance to Firestore
+          const userDocRef = doc(db, "users", rfidFromUrl);
+          updateDoc(userDocRef, {
+            balance: 0,
+            sessionStartedAt: null,
+            updatedAt: serverTimestamp(),
+          }).catch(console.error);
+
           return 0;
         }
-        return prevTimer - 1;
-      });
-    }, PING_INTERVAL_MS);
 
-    return () => clearInterval(sessionLoop);
-  }, [isSessionActive, setIsSessionActive]);
+        return newBalance;
+      });
+    }, 1000); // Deplete every second for smooth countdown
+
+    return () => clearInterval(balanceLoop);
+  }, [isSessionActive, billingRatePerMinute, configLoading, rfidFromUrl]);
 
   // Elapsed Time Loop (Runs constantly)
   useEffect(() => {
@@ -241,11 +440,13 @@ export default function Dashboard() {
   };
 
   const getTimerColor = () => {
-    const redThreshold = BILLING_INTERVAL_SECONDS * 0.2;
-    if (sessionTimer > redThreshold) {
-      return "rgb(16, 185, 129)"; // green-500
+    // Color based on remaining balance/time
+    if (timeRemainingMinutes > 5) {
+      return "rgb(16, 185, 129)"; // green-500 (>5 minutes)
+    } else if (timeRemainingMinutes > 2) {
+      return "rgb(234, 179, 8)"; // yellow-500 (2-5 minutes)
     } else {
-      return "rgb(239, 68, 68)"; // red-500
+      return "rgb(239, 68, 68)"; // red-500 (<2 minutes)
     }
   };
 
@@ -275,6 +476,29 @@ export default function Dashboard() {
     "bg-gray-200",
   ];
 
+  // Show loading state while fetching data
+  if (loading) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500"></div>
+          <span className="text-gray-500">Loading dashboard...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // If no user data after loading, show error (shouldn't reach here due to redirects)
+  if (!userData) {
+    return (
+      <div className="min-h-dvh flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <span className="text-gray-500">User not found</span>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-dvh flex justify-center text-sm sm:text-base sm:bg-white">
       <div className="flex flex-col gap-6 p-3 sm:p-4 md:px-0 w-full max-w-md">
@@ -294,10 +518,12 @@ export default function Dashboard() {
               {/* name */}
               <span className="text-gray-800 text-sm sm:text-base">
                 Hello,{" "}
-                <span className="text-green-500 font-semibold">Edward</span>
+                <span className="text-green-500 font-semibold">
+                  {userData.firstName || userData.fullName?.split(" ")[0] || "User"}
+                </span>
               </span>
               <span className="text-gray-500 text-xs">
-                <span className="font-semibold">RFID:</span> 123456789
+                <span className="font-semibold">RFID:</span> {userData.rfidCardId}
               </span>
             </div>
           </div>
@@ -315,11 +541,11 @@ export default function Dashboard() {
         </div>
         {/* main */}
         <div className="flex flex-col gap-4">
-          {/* Time remaining display */}
+          {/* Time remaining display - Based on balance */}
           {isSessionActive && (
             <div className="flex items-center justify-center">
               <div className="col-span-1 flex flex-col items-center justify-center">
-                <span className="text-gray-500 text-sm">Time remaining</span>
+                <span className="text-gray-500 text-sm">Estimated time remaining</span>
                 <span
                   className="font-bold text-lg"
                   style={{
@@ -327,7 +553,10 @@ export default function Dashboard() {
                     transition: "color 0.5s ease-out",
                   }}
                 >
-                  {formatTime(sessionTimer)}
+                  {formatTime(timeRemainingSeconds)}
+                </span>
+                <span className="text-gray-500 text-xs">
+                  (at P{billingRatePerMinute.toFixed(2)}/min)
                 </span>
               </div>
             </div>
@@ -389,13 +618,12 @@ export default function Dashboard() {
                 {/* ⬅️ Shows HH:MM:SS */}
               </div>
             </div>
-            {/* Billing rate (Static) */}
+            {/* Billing rate (From system config) */}
             <div className="col-span-1 flex items-center bg-blue-500 px-5 py-5 rounded-2xl">
               <div className="flex flex-col gap- flex-1">
                 <span className="text-gray-50 text-sm">Billing rate</span>
                 <span className="font-semibold text-white">
-                  P{BILLING_RATE.toFixed(2)} / {BILLING_INTERVAL_SECONDS / 60}
-                  mins
+                  P{billingRatePerMinute.toFixed(2)} / min
                 </span>
               </div>
             </div>
@@ -655,12 +883,12 @@ export default function Dashboard() {
                   </span>
                 </div>
               </div>
-              {/* remaining time */}
+              {/* time used */}
               <div className="flex items-center justify-center py-2">
                 <span className="text-gray-500 text-sm sm:text-base">
-                  Time remaining:{" "}
+                  Time used:{" "}
                   <span className="font-semibold">
-                    {formatTime(sessionTimer)}
+                    {formatTime(elapsedSeconds)}
                   </span>
                 </span>
               </div>
@@ -689,7 +917,7 @@ export default function Dashboard() {
         <div className="flex min-h-dvh flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
           <div className="bg-white rounded-2xl py-6 px-4 flex flex-col items-center justify-center gap-5 w-full max-w-md">
             <div className="bg-green-100 size-12 sm:size-13 flex items-center justify-center relative rounded-full z-50">
-              <CircleCheckBig className="text-green-500 size-6 sm:size-7" />
+              <CheckCircle className="text-green-500 size-6 sm:size-7" />
             </div>
             <div className="flex flex-col gap-3">
               <div className="flex flex-col items-center justify-center gap-2">
@@ -769,10 +997,10 @@ export default function Dashboard() {
               {/* left */}
               <div className="flex flex-col">
                 <span className="text-xs sm:text-sm font-semibold">
-                  Edward Gatbonton
+                  {userData.fullName}
                 </span>
                 <span className="text-xs sm:text-sm text-gray-500">
-                  123456789
+                  {userData.rfidCardId}
                 </span>
               </div>
               {/* right */}

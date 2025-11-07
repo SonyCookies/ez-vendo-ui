@@ -4,26 +4,46 @@ import {
   Headset,
   Loader2,
   MessageCircleWarning,
-  CircleCheckBig,
+  CheckCircle,
+  Info,
 } from "lucide-react"; // Imported new icons
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation"; // For redirection
+import { useRouter, useSearchParams } from "next/navigation"; // For redirection and URL params
 import Link from "next/link";
+import { db } from "@/app/config/firebase";
+import { collection, addDoc, doc, updateDoc, serverTimestamp, getDoc, setDoc } from "firebase/firestore";
 
 // Helper function to validate email format
 const validateEmail = (email) => {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 };
 
+// Simple password hashing function (for demo - use bcrypt/argon2 in production)
+const hashPassword = async (password) => {
+  // Using Web Crypto API for hashing
+  const encoder = new TextEncoder();
+  const data = encoder.encode(password);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return hashHex;
+};
+
 // --- Timer Constants ---
-const REGISTRATION_TIME_LIMIT_SECONDS = 600; // 10 minutes
+const REGISTRATION_TIME_LIMIT_SECONDS = 300; // 5 minutes (not 10)
 
 export default function Register() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  // Get RFID and attempt from URL parameters
+  const rfidFromUrl = searchParams.get("rfid");
+  const attemptFromUrl = searchParams.get("attempt");
 
   // --- Timer State ---
   const [timeLeft, setTimeLeft] = useState(REGISTRATION_TIME_LIMIT_SECONDS);
-  const [timerStarted, setTimerStarted] = useState(false); // Tracks if the timer has been initialized
+  const [timerStarted, setTimerStarted] = useState(false);
+  const [timerLoading, setTimerLoading] = useState(true);
 
   // --- Form States (Your existing states) ---
   const [formData, setFormData] = useState({
@@ -32,7 +52,7 @@ export default function Register() {
     email: "",
     password: "",
     confirmPassword: "",
-    rfid: "1234567890",
+    rfid: rfidFromUrl || "1234567890", // Pre-fill with URL param or default
   });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -40,6 +60,8 @@ export default function Register() {
     type: null,
     text: null,
   });
+  const [showInfoModal, setShowInfoModal] = useState(true); // Show info modal on mount
+  const [registrationSuccess, setRegistrationSuccess] = useState(false); // Track successful registration
 
   // --- Color Interpolation Logic (Adapted from the modal) ---
   const getColorForCountdown = useCallback(() => {
@@ -53,22 +75,89 @@ export default function Register() {
     return `rgb(${r}, ${g}, ${b})`;
   }, [timeLeft]);
 
-  // --- Timer Logic (useEffect) ---
+  // --- Initialize Timer from Firestore ---
   useEffect(() => {
-    if (!timerStarted) {
-      // Initialize timer only once on mount
-      setTimerStarted(true);
-    }
+    const initializeTimer = async () => {
+      if (!rfidFromUrl) {
+        setTimerLoading(false);
+        return;
+      }
+
+      try {
+        // Add timeout protection (30 seconds)
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Connection timeout")), 30000)
+        );
+
+        const userDocRef = doc(db, "users", rfidFromUrl);
+        const userSnap = await Promise.race([
+          getDoc(userDocRef),
+          timeoutPromise
+        ]);
+
+        if (userSnap.exists()) {
+          const userData = userSnap.data();
+          
+          // Check if timer was already started
+          if (userData.registrationTimerStart) {
+            // Calculate elapsed time
+            const startTime = userData.registrationTimerStart.toMillis();
+            const now = Date.now();
+            const elapsedSeconds = Math.floor((now - startTime) / 1000);
+            const remaining = REGISTRATION_TIME_LIMIT_SECONDS - elapsedSeconds;
+
+            if (remaining <= 0) {
+              // Time already expired
+              setTimeLeft(0);
+              setGlobalMessage({
+                type: "error",
+                text: "Time limit expired. Redirecting to home...",
+              });
+              setTimeout(() => router.push("/"), 2000);
+            } else {
+              // Set remaining time
+              setTimeLeft(remaining);
+            }
+          } else {
+            // First time on registration page - store start time (with timeout)
+            await Promise.race([
+              updateDoc(userDocRef, {
+                registrationTimerStart: serverTimestamp(),
+              }),
+              timeoutPromise
+            ]);
+            setTimeLeft(REGISTRATION_TIME_LIMIT_SECONDS);
+          }
+        }
+        
+        setTimerStarted(true);
+        setTimerLoading(false);
+      } catch (error) {
+        console.error("Error initializing timer:", error);
+        setTimerLoading(false);
+        setTimerStarted(true);
+      }
+    };
+
+    initializeTimer();
+  }, [rfidFromUrl, router]);
+
+  // --- Timer Countdown Logic ---
+  useEffect(() => {
+    // Don't run timer if not started, still loading, submitting, or registration successful
+    if (!timerStarted || timerLoading || isSubmitting || registrationSuccess) return;
 
     if (timeLeft <= 0) {
-      // Timer hit 0: Redirect user
-      setGlobalMessage({
-        type: "error",
-        text: "Time limit reached. You will be redirected to the home screen.",
-      });
-      setTimeout(() => {
-        router.push("/"); // Redirect to home page
-      }, 2000);
+      // Timer hit 0: Redirect user (only if registration not successful)
+      if (!registrationSuccess) {
+        setGlobalMessage({
+          type: "error",
+          text: "Time limit reached. You will be redirected to the home screen.",
+        });
+        setTimeout(() => {
+          router.push("/"); // Redirect to home page
+        }, 2000);
+      }
       return;
     }
 
@@ -77,7 +166,7 @@ export default function Register() {
     }, 1000);
 
     return () => clearInterval(timer); // Cleanup function
-  }, [timeLeft, timerStarted, router]);
+  }, [timeLeft, timerStarted, timerLoading, isSubmitting, registrationSuccess, router]);
 
   // Format time (MM:SS)
   const formatTime = (totalSeconds) => {
@@ -88,7 +177,6 @@ export default function Register() {
 
   // --- 1. Validation Logic ---
   const validateField = (name, value) => {
-    /* ... existing logic ... */
     let error = null;
     const displayFieldName = name
       .replace(/([A-Z])/g, " $1")
@@ -98,12 +186,15 @@ export default function Register() {
       error = `${displayFieldName} required`;
     } else if (name === "email" && !validateEmail(value)) {
       error = "Invalid email format";
+    } else if (name === "password" && value.length < 8) {
+      error = "Password must be at least 8 characters";
+    } else if (name === "confirmPassword" && value !== formData.password) {
+      error = "Passwords do not match";
     }
     return error;
   };
 
   const validateAllFields = () => {
-    /* ... existing logic ... */
     const newErrors = {};
     Object.keys(formData).forEach((name) => {
       if (name !== "rfid") {
@@ -113,6 +204,12 @@ export default function Register() {
         }
       }
     });
+    
+    // Additional validation for password match
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -138,7 +235,7 @@ export default function Register() {
     setErrors((prev) => ({ ...prev, [e.target.name]: null }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setGlobalMessage({ type: null, text: null });
 
@@ -161,17 +258,78 @@ export default function Register() {
 
     // Submission Logic
     setIsSubmitting(true);
-    // Timer should stop on successful submission
-    setTimeLeft(0);
-    setGlobalMessage({
-      type: "success",
-      text: "Registration successful! Redirecting...",
-    });
 
-    setTimeout(() => {
+    try {
+      // Hash password before storing (simple hash for now - use bcrypt in production)
+      const hashedPassword = await hashPassword(formData.password);
+      
+      // Update the existing document (using RFID as document ID) to mark as registered
+      const userDocRef = doc(db, "users", formData.rfid);
+      
+      const userData = {
+        // RFID Information
+        rfidCardId: formData.rfid,
+        
+        // Personal Information
+        fullName: `${formData.firstName} ${formData.lastName}`,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email.toLowerCase().trim(),
+        
+        // Authentication (for web portal access)
+        passwordHash: hashedPassword,
+        
+        // Account Information
+        balance: 0,
+        status: "active",
+        isRegistered: true,
+        accountType: "user", // user, admin, etc.
+        
+        // Timestamps
+        registeredAt: serverTimestamp(),
+        lastLogin: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        
+        // Attempts (reset after successful registration)
+        attempts: 0,
+        
+        // Additional metadata
+        registrationMethod: "rfid_scan",
+        registrationAttempt: parseInt(attemptFromUrl) || 1,
+      };
+
+      // Update the document (it already exists from the scanning attempts)
+      // Remove the timer start field as registration is complete
+      await updateDoc(userDocRef, {
+        ...userData,
+        registrationTimerStart: null, // Clear timer
+      });
+      
+      console.log("✅ User registered successfully:", formData.rfid);
+
+      // Mark registration as successful (stops timer from redirecting to home)
+      setRegistrationSuccess(true);
+
+      // Show success message
+      setGlobalMessage({
+        type: "success",
+        text: "Registration successful! Redirecting to dashboard...",
+      });
+
+      // Redirect to dashboard after 2 seconds
+      setTimeout(() => {
+        setIsSubmitting(false);
+        // Redirect to dashboard with RFID parameter
+        router.push(`/dashboard?rfid=${encodeURIComponent(formData.rfid)}`);
+      }, 2000);
+    } catch (error) {
+      console.error("❌ Error registering user:", error);
       setIsSubmitting(false);
-      router.push("/dashboard"); // Example redirection after success
-    }, 2000);
+      setGlobalMessage({
+        type: "error",
+        text: `Registration failed: ${error.message}`,
+      });
+    }
   };
 
   const getInputClass = (name) => {
@@ -188,6 +346,78 @@ export default function Register() {
 
   return (
     <div className="min-h-dvh text-sm sm:text-base flex flex-col items-center justify-center p-3 sm:p-4 md:px-0 bg-white">
+      {/* Information Modal */}
+      {showInfoModal && (
+        <div className="min-h-dvh flex flex-col items-center justify-center fixed inset-0 w-full bg-black/50 p-3 sm:p-4 md:px-0 z-50">
+          <div className="bg-white rounded-2xl p-6 flex flex-col gap-5 w-full max-w-md">
+            {/* Icon */}
+            <div className="flex items-center justify-center">
+              <div className="bg-green-100 rounded-full p-4">
+                <Info className="text-green-600 size-10 sm:size-12" />
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="text-center flex flex-col gap-2">
+              <span className="text-xl sm:text-2xl font-bold">
+                Registration Information
+              </span>
+            </div>
+
+            {/* Information Points */}
+            <div className="flex flex-col gap-4">
+              {/* Point 1: Free Internet */}
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-green-50 border border-green-200">
+                <div className="flex items-center justify-center min-w-6 min-h-6 bg-green-500 rounded-full mt-0.5">
+                  <span className="text-white text-sm font-semibold">1</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-sm sm:text-base">
+                    Free Internet Access
+                  </span>
+                  <span className="text-gray-600 text-xs sm:text-sm">
+                    You have complimentary internet access during the registration process. Complete your registration within 5 minutes.
+                  </span>
+                </div>
+              </div>
+
+              {/* Point 2: 3 Attempts Limit */}
+              <div className="flex items-start gap-3 p-3 rounded-lg bg-orange-50 border border-orange-200">
+                <div className="flex items-center justify-center min-w-6 min-h-6 bg-orange-500 rounded-full mt-0.5">
+                  <span className="text-white text-sm font-semibold">2</span>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <span className="font-semibold text-sm sm:text-base">
+                    Limited Attempts
+                  </span>
+                  <span className="text-gray-600 text-xs sm:text-sm">
+                    You have <span className="font-semibold text-orange-600">3 attempts maximum</span> to complete your registration. After 3 attempts, you will need to contact an administrator.
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Current Attempt Counter */}
+            {attemptFromUrl && (
+              <div className="text-center py-2 px-4 bg-gray-100 rounded-lg">
+                <span className="text-sm text-gray-600">
+                  Current Attempt: <span className="font-semibold text-orange-600">{attemptFromUrl} of 3</span>
+                </span>
+              </div>
+            )}
+
+            {/* OK Button */}
+            <button
+              onClick={() => setShowInfoModal(false)}
+              disabled={timerLoading}
+              className="w-full py-3 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white font-semibold rounded-full transition-colors"
+            >
+              {timerLoading ? "Loading..." : "I Understand"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex flex-col gap-5 sm:gap-6 w-full max-w-md ">
         {/* Intro */}
         <div className="flex text-center flex-col pt-2">
@@ -202,7 +432,7 @@ export default function Register() {
           <div className="flex flex-col text-center gap-1">
             <span className=" text-sm">Time remaining</span>
             <span className="text-gray-500 text-xs">
-              ( 1 out of 3 attempts )
+              ( {attemptFromUrl || "1"} out of 3 attempts )
             </span>
           </div>
           <span
@@ -229,7 +459,7 @@ export default function Register() {
             {globalMessage.type === "error" ? (
               <MessageCircleWarning className="size-6 sm:size-7" />
             ) : (
-              <CheckCircleBig className="size-6 sm:size-7" />
+              <CheckCircle className="size-6 sm:size-7" />
             )}
             <span className="text-xs sm:text-sm">{globalMessage.text}</span>
           </div>
@@ -302,6 +532,11 @@ export default function Register() {
               readOnly
               disabled={isSubmitting || timeLeft <= 0}
             />
+            {rfidFromUrl && (
+              <span className="text-xs text-green-600">
+                ✓ Card detected and auto-filled
+              </span>
+            )}
           </div>
           {/* Email */}
           <div className="flex flex-col gap-1">
